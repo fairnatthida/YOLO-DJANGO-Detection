@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Set charset to UTF-8 to support all languages -->
+    <meta charset="UTF-8">
+    <!-- Set viewport to fit all devices -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Set the title of the web page -->
+    <title>YOLO Object Detection</title>
+    <!-- CSS styles for webpage formatting -->
+    <style>
+        body {
+            font-family: 'Arial', sans-serif; /* Use Arial font */
+            background-color: #f8f9fa; /* Light gray background */
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh; /* Full screen height */
+        }
+        header {
+            background-color: #0753a4; /* Header background color */
+            color: #fff; /* White text color */
+            width: 100%; /* Full screen width */
+            padding: 1rem 0; /* Top and bottom padding */
+            text-align: center; /* Center text */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Add shadow to header */
+        }
+        main {
+            background: #fff; /* White background */
+            padding: 2rem; /* Padding around content */
+            border-radius: 10px; /* Rounded corners */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Add shadow */
+            text-align: center; /* Center text */
+            width: 90%; /* 90% of screen width */
+            max-width: 700px; /* Maximum width of 700px */
+            margin-top: 2rem; /* Top margin */
+        }
+        video, img {
+            border: 1px solid #ccc; /* Gray border */
+            border-radius: 8px; /* Rounded corners */
+            margin-bottom: 1rem; /* Bottom margin */
+            width: 100%; /* Full screen width */
+            max-width: 640px; /* Maximum width of 640px */
+        }
+        button {
+            background-color: #18af3b; /* Green background */
+            color: #fff; /* White text color */
+            border: none; /* No border */
+            padding: 10px 20px; /* Padding */
+            border-radius: 5px; /* Rounded corners */
+            cursor: pointer; /* Change cursor to hand */
+            font-size: 16px; /* Font size */
+            transition: background-color 0.3s ease; /* Smooth background color transition on hover */
+        }
+        button:hover {
+            background-color: #218838; /* Dark green background on hover */
+        }
+        #result {
+            margin-top: 1rem; /* Top margin */
+            font-size: 18px; /* Font size */
+        }
+        .detected-objects {
+            margin-top: 10px; /* Top margin */
+            font-weight: bold; /* Bold text */
+            color: #007bff; /* Blue color */
+        }
+    </style>
+</head>
+<body>
+    <!-- Web page header -->
+    <header>
+        <h1>YOLO Object Detection</h1>
+    </header>
+    <!-- Main content of the web page -->
+    <main>
+        <!-- Show video from camera -->
+        <video id="video" autoplay></video>
+        <!-- Button to capture image -->
+        <button id="capture">Capture</button>
+        <!-- Show detection result -->
+        <div id="result">
+            <!-- Show detected image -->
+            <img id="output" style="display: none;" />
+            <!-- Show detected object names -->
+            <div id="detected-objects" class="detected-objects"></div>
+        </div>
+    </main>
+    <!-- JavaScript script for functionality -->
+    <script>
+        (function() {
+            var video = document.getElementById('video');
+
+            // Access camera
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({ video: true }).then(function(stream) {
+                    video.srcObject = stream; // Show video from camera
+                    video.play(); // Play video
+                });
+            }
+
+            var canvas = document.createElement('canvas');
+            document.getElementById('capture').addEventListener('click', function() {
+                // Set canvas size to video size
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                var context = canvas.getContext('2d');
+                context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight); // Draw image from video onto canvas
+
+                var dataURL = canvas.toDataURL('image/jpeg'); // Convert canvas image to base64
+
+                fetch('/detect/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: 'image=' + encodeURIComponent(dataURL) // Send image data to server
+                })
+                .then(response => response.json())
+                .then(data => {
+                    var output = document.getElementById('output');
+                    var detectedObjects = document.getElementById('detected-objects');
+                    output.src = 'data:image/jpeg;base64,' + data.image; // Show detected image
+                    output.style.display = 'block';
+                    detectedObjects.innerHTML = 'Detected Objects: ' + data.detected_objects.join(', '); // Show detected object names
+                })
+                .catch(error => {
+                    console.error('Error:', error); // Show error if any
+                });
+            });
+        })();
+    </script>
+</body>
+</html>
